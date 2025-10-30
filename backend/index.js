@@ -4,6 +4,9 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const bcrypt = require("bcryptjs");
+
+const User = require("./Schema/UserSchema"); // ✅ Import User model
 
 const { HoldingsModel } = require("./Model/HoldingsModel");
 
@@ -210,6 +213,65 @@ app.post("/newOrder", async (req, res) => {
   res.send("Order saved!");
 });
 
+//This is the signup setup
+
+app.post("/api/signup", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(409).json({ message: "Email already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+    });
+
+    await newUser.save();
+    res.status(201).json({ message: "User created successfully" });
+  } catch (error) {
+    console.error("Signup Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// 🟢 Login Route
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    res.json({
+      message: "Login successful",
+      user: { name: user.name, email: user.email },
+    });
+  } catch (error) {
+    console.error("Login Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 app.listen(PORT, () => {
   console.log("App started!");
   mongoose.connect(uri);
