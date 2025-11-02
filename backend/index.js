@@ -244,7 +244,6 @@ app.post("/api/signup", async (req, res) => {
   }
 });
 
-// 🟢 Login Route
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
